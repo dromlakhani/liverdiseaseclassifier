@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dr. Om J Lakhani's Steatotic Liver Disease Classifier</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            background: #e2e8f0;
+        }
+        .btn.active {
+            background: #3b82f6;
+            color: white;
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            background-color: #e2e8f0;
+        }
+        .threshold-box {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .submit-btn {
+            background: #3b82f6;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .submit-btn:hover {
+            background: #2563eb;
+        }
+        .checkbox-label {
+            display: block;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1 style="text-align: center;">Steatotic Liver Disease Classifier</h1>
+        
+        <div class="section">
+            <h3>1. Patient Gender</h3>
+            <div>
+                <button class="btn" onclick="setGender('male')" id="maleBtn">Male</button>
+                <button class="btn" onclick="setGender('female')" id="femaleBtn">Female</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>2. Presence of Steatosis</h3>
+            <div>
+                <button class="btn" onclick="setSteatosis(true)" id="steatosisYesBtn">Yes</button>
+                <button class="btn" onclick="setSteatosis(false)" id="steatosisNoBtn">No</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>3. Cardiometabolic Risk Factors (CMRFs)</h3>
+            <div class="input-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" onchange="updateCMRFs()" name="cmrf">
+                    BMI ≥25 kg/m² or waist circumference ≥80cm (women)/≥94cm (men)
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" onchange="updateCMRFs()" name="cmrf">
+                    Fasting glucose ≥100 mg/dL (5.6 mmol/L) or type 2 diabetes
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" onchange="updateCMRFs()" name="cmrf">
+                    Blood pressure ≥130/85 mmHg or treatment
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" onchange="updateCMRFs()" name="cmrf">
+                    Triglycerides ≥150 mg/dL (1.70 mmol/L) or treatment
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" onchange="updateCMRFs()" name="cmrf">
+                    HDL-cholesterol: Males ≤40 mg/dL (1.0 mmol/L) / Females ≤50 mg/dL (1.3 mmol/L)
+                </label>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>4. Alcohol Intake</h3>
+            <div>
+                <input type="number" id="alcoholInput" placeholder="0" style="padding: 5px;">
+                <span>grams per day</span>
+            </div>
+            <div id="thresholdInfo" class="threshold-box" style="display: none;">
+            </div>
+        </div>
+
+        <button class="submit-btn" onclick="classifyDisease()">Classify Disease</button>
+
+        <div id="result" class="alert" style="display: none;"></div>
+    </div>
+
+    <script>
+        let state = {
+            gender: null,
+            hasSteatosis: null,
+            hasCMRF: false,
+            alcoholIntake: 0
+        };
+
+        function setGender(gender) {
+            state.gender = gender;
+            document.getElementById('maleBtn').classList.toggle('active', gender === 'male');
+            document.getElementById('femaleBtn').classList.toggle('active', gender === 'female');
+            updateThresholdInfo();
+        }
+
+        function setSteatosis(value) {
+            state.hasSteatosis = value;
+            document.getElementById('steatosisYesBtn').classList.toggle('active', value === true);
+            document.getElementById('steatosisNoBtn').classList.toggle('active', value === false);
+        }
+
+        function updateCMRFs() {
+            const checkboxes = document.getElementsByName('cmrf');
+            state.hasCMRF = Array.from(checkboxes).some(cb => cb.checked);
+        }
+
+        function updateThresholdInfo() {
+            const thresholdDiv = document.getElementById('thresholdInfo');
+            if (state.gender) {
+                const thresholds = state.gender === 'male' ? 
+                    { masld: '≤30', metald: '30-60', ald: '>60' } :
+                    { masld: '≤20', metald: '20-40', ald: '>40' };
+                
+                thresholdDiv.innerHTML = `
+                    <h4>Classification Thresholds for ${state.gender === 'male' ? 'Males' : 'Females'}:</h4>
+                    <div>
+                        <p><strong>MASLD:</strong> ${thresholds.masld} g/day</p>
+                        <p><strong>MetALD:</strong> ${thresholds.metald} g/day</p>
+                        <p><strong>ALD:</strong> ${thresholds.ald} g/day</p>
+                    </div>
+                `;
+                thresholdDiv.style.display = 'block';
+            } else {
+                thresholdDiv.style.display = 'none';
+            }
+        }
+
+        function classifyDisease() {
+            const resultDiv = document.getElementById('result');
+            const alcoholInput = document.getElementById('alcoholInput');
+            const alcoholGramsPerDay = parseFloat(alcoholInput.value);
+
+            if (!state.gender) {
+                showResult('Please select patient gender.');
+                return;
+            }
+
+            if (state.hasSteatosis === null) {
+                showResult('Please indicate if steatosis is present.');
+                return;
+            }
+
+            if (!state.hasSteatosis) {
+                showResult('No steatotic liver disease present. Consider other diagnoses.');
+                return;
+            }
+
+            const alcoholThreshold = state.gender === 'male' ? 30 : 20;
+            const alcoholUpperLimit = state.gender === 'male' ? 60 : 40;
+
+            let result;
+            if (state.hasCMRF) {
+                if (alcoholGramsPerDay <= alcoholThreshold) {
+                    result = 'Classification: MASLD (Metabolic dysfunction-associated steatotic liver disease)';
+                } else if (alcoholGramsPerDay > alcoholThreshold && alcoholGramsPerDay < alcoholUpperLimit) {
+                    result = 'Classification: MetALD (Metabolic dysfunction and alcohol-related liver disease)';
+                } else {
+                    result = 'Classification: ALD (Alcohol-related liver disease)';
+                }
+            } else {
+                if (alcoholGramsPerDay > alcoholThreshold) {
+                    result = 'Classification: ALD (Alcohol-related liver disease)';
+                } else {
+                    result = 'Consider other causes of steatotic liver disease';
+                }
+            }
+
+            showResult(result);
+        }
+
+        function showResult(message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
